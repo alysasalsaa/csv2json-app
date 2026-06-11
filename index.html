@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSV2JSON</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0f172a;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #f8fafc;
+      padding: 2rem 1rem;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    header { text-align: center; }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: #94a3b8;
+      margin-top: 0.25rem;
+    }
+
+    /* Alert */
+    .alert {
+      display: none;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .alert.error { display: block; background: #450a0a; border: 1px solid #ef4444; color: #fca5a5; }
+    .alert.success { display: block; background: #052e16; border: 1px solid #22c55e; color: #86efac; }
+
+    /* Editor grid */
+    .editors {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 600px) { .editors { grid-template-columns: 1fr; } }
+
+    .editor-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .editor-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #94a3b8;
+    }
+
+    textarea {
+      width: 100%;
+      height: 260px;
+      background: #1e293b;
+      border: 1.5px solid #334155;
+      border-radius: 10px;
+      color: #f8fafc;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      padding: 0.75rem 1rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+
+    textarea:focus { border-color: #0ea5e9; }
+    textarea.invalid { border-color: #ef4444; }
+
+    /* File row */
+    .file-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .file-input {
+      flex: 1;
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      border: 1.5px solid #334155;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      outline: none;
+    }
+
+    .file-input:focus { border-color: #0ea5e9; }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    .btn-primary { background: #0ea5e9; color: #fff; }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary { background: #6366f1; color: #fff; }
+    .btn-secondary:hover { opacity: 0.88; }
+
+    .btn-ghost {
+      background: transparent;
+      color: #94a3b8;
+      border: 1.5px solid #334155;
+    }
+    .btn-ghost:hover { background: #1e293b; color: #f8fafc; }
+
+    .btn-sm {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <header>
+      <h1>CSV ↔ JSON</h1>
+      <p class="subtitle">Convert between CSV and JSON formats</p>
+    </header>
+
+    <div id="alert" class="alert"></div>
+
+    <div class="editors">
+
+      <!-- CSV side -->
+      <div class="editor-box">
+        <span class="editor-label">CSV</span>
+        <div class="file-row">
+          <input class="file-input" type="text" id="csv-path" placeholder="path/to/file.csv" />
+          <button class="btn-ghost btn-sm" onclick="openCSV()">Open</button>
+          <button class="btn-ghost btn-sm" onclick="saveCSV()">Save</button>
+        </div>
+        <textarea id="csv-box" placeholder="Paste CSV here...&#10;&#10;name,age,city&#10;Alice,30,Jakarta&#10;Bob,25,Bandung"></textarea>
+      </div>
+
+      <!-- JSON side -->
+      <div class="editor-box">
+        <span class="editor-label">JSON</span>
+        <div class="file-row">
+          <input class="file-input" type="text" id="json-path" placeholder="path/to/file.json" />
+          <button class="btn-ghost btn-sm" onclick="openJSON()">Open</button>
+          <button class="btn-ghost btn-sm" onclick="saveJSON()">Save</button>
+        </div>
+        <textarea id="json-box" placeholder="Paste JSON here...&#10;&#10;[&#10;  { &quot;name&quot;: &quot;Alice&quot;, &quot;age&quot;: &quot;30&quot; }&#10;]"></textarea>
+      </div>
+
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="convertCSVtoJSON()">CSV → JSON</button>
+      <button class="btn-secondary" onclick="convertJSONtoCSV()">JSON → CSV</button>
+      <button class="btn-ghost" onclick="clearAll()">Clear</button>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="loadCSVFile(event)" />
+    <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="loadJSONFile(event)" />
+
+  </div>
+
+  <script>
+    const csvBox  = document.getElementById('csv-box');
+    const jsonBox = document.getElementById('json-box');
+    const alertEl = document.getElementById('alert');
+
+    function showAlert(msg, type = 'error') {
+      alertEl.textContent = msg;
+      alertEl.className = 'alert ' + type;
+      setTimeout(() => { alertEl.className = 'alert'; }, 3500);
+    }
+
+    /* ── CSV → JSON ── */
+    function convertCSVtoJSON() {
+      const raw = csvBox.value.trim();
+      if (!raw) { csvBox.classList.add('invalid'); showAlert('CSV box is empty.'); return; }
+      csvBox.classList.remove('invalid');
+
+      const lines = raw.split('\n').filter(l => l.trim() !== '');
+      if (lines.length < 2) { showAlert('CSV must have at least a header row and one data row.'); return; }
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      try {
+        const result = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim());
+          if (values.length !== headers.length) throw new Error('Column count mismatch.');
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = values[i]; });
+          return obj;
+        });
+        jsonBox.value = JSON.stringify(result, null, 2);
+        showAlert('Converted successfully!', 'success');
+      } catch (e) {
+        showAlert('Invalid CSV: ' + e.message);
+      }
+    }
+
+    /* ── JSON → CSV ── */
+    function convertJSONtoCSV() {
+      const raw = jsonBox.value.trim();
+      if (!raw) { jsonBox.classList.add('invalid'); showAlert('JSON box is empty.'); return; }
+      jsonBox.classList.remove('invalid');
+
+      try {
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data) || data.length === 0) throw new Error('JSON must be a non-empty array.');
+        const headers = Object.keys(data[0]);
+        const rows = data.map(obj => headers.map(h => {
+          const val = obj[h] ?? '';
+          return String(val).includes(',') ? `"${val}"` : val;
+        }).join(','));
+        csvBox.value = [headers.join(','), ...rows].join('\n');
+        showAlert('Converted successfully!', 'success');
+      } catch (e) {
+        showAlert('Invalid JSON: ' + e.message);
+      }
+    }
+
+    /* ── Clear ── */
+    function clearAll() {
+      csvBox.value = '';
+      jsonBox.value = '';
+      csvBox.classList.remove('invalid');
+      jsonBox.classList.remove('invalid');
+      alertEl.className = 'alert';
+    }
+
+    /* ── Open CSV file ── */
+    function openCSV() {
+      document.getElementById('csv-file-input').click();
+    }
+    function loadCSVFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!file.name.endsWith('.csv')) { showAlert('File not found or not a valid CSV file.'); return; }
+      document.getElementById('csv-path').value = file.name;
+      const reader = new FileReader();
+      reader.onload = ev => { csvBox.value = ev.target.result; };
+      reader.readAsText(file);
+    }
+
+    /* ── Open JSON file ── */
+    function openJSON() {
+      document.getElementById('json-file-input').click();
+    }
+    function loadJSONFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (!file.name.endsWith('.json')) { showAlert('File not found or not a valid JSON file.'); return; }
+      document.getElementById('json-path').value = file.name;
+      const reader = new FileReader();
+      reader.onload = ev => { jsonBox.value = ev.target.result; };
+      reader.readAsText(file);
+    }
+
+    /* ── Save CSV ── */
+    function saveCSV() {
+      if (!csvBox.value.trim()) { showAlert('CSV box is empty. Nothing to save.'); return; }
+      const filename = document.getElementById('csv-path').value.trim() || 'output.csv';
+      downloadFile(csvBox.value, filename, 'text/csv');
+    }
+
+    /* ── Save JSON ── */
+    function saveJSON() {
+      if (!jsonBox.value.trim()) { showAlert('JSON box is empty. Nothing to save.'); return; }
+      const filename = document.getElementById('json-path').value.trim() || 'output.json';
+      downloadFile(jsonBox.value, filename, 'application/json');
+    }
+
+    function downloadFile(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
